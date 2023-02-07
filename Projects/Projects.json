@@ -1,0 +1,38 @@
+{
+    "123": {
+        "dataBase": {
+            "headers": [
+                {
+                    "name": "Identifier",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "Character",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "Dialogue",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "Filename",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "LineNumber",
+                    "type": "TEXT"
+                },
+                {
+                    "name": "RenPyScript",
+                    "type": "TEXT"
+                }
+            ],
+            "path": "",
+            "table_name": "ScriptTable",
+            "type": "sqlite"
+        },
+        "info": {
+            "dataBase": "do not modifier headers,unless Renpy officially changed the format of the exported dialogue file."
+        }
+    }
+}
