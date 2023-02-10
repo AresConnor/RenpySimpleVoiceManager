@@ -1,6 +1,5 @@
+import tempfile
 import VoiceManager
-
-
 
 if __name__ == '__main__':
     import sys

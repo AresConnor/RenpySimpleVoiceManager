@@ -1,44 +1,59 @@
-from PyQt6 import uic, QtGui
-from PyQt6.QtCore import QCoreApplication, pyqtSignal, pyqtSlot, Qt, QByteArray, QModelIndex
-from PyQt6.QtSql import QSqlQuery, QSqlTableModel
-from PyQt6.QtWidgets import QMainWindow, QProgressDialog, QTableView
+from PyQt6 import QtGui
+from PyQt6.QtCore import QCoreApplication, pyqtSignal, pyqtSlot, Qt
+from PyQt6.QtSql import QSqlQuery
+from PyQt6.QtWidgets import QMainWindow, QProgressDialog, QTableView, QPushButton
 import json
 import os
-from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
 
-from External_tianxi_renpy_Redo.tools.VoiceManager.utils import readTabFile, Project
+from .delegates import ProjectViewDelegate
+from .project import Project, ProjectDialog
+from .ui.ui import Ui_MainWindow
+from .utils import readTabFile, SearchText, loadCharaDefine, translateCharacter
 
 
 class VMMainWindow(QMainWindow):
+    def dropEvent(self, a0: QtGui.QDropEvent) -> None:
+        print("dropEvent")
+        a0.accept()
+        super().dropEvent(a0)
+
     projectReadySignal = pyqtSignal(Project)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         super().closeEvent(a0)
-        # 保存Projects.json
-        with open("Projects/Projects.json", "w") as f:
-            json.dump({projObj.projName: projObj.projSettings for projObj in self.projects.values()}, f, indent=4,
-                      ensure_ascii=False, sort_keys=True)
+        self.closeWorkingProject()
+        # 检查是否有未保存的项目
+        for proj in self.projects.values():
+            if proj.isOpen():
+                proj.close()
 
     def __init__(self):
         super().__init__()
+        self.projectsWindow = None
         self.workingProject = None
-        uic.loadUi("./VoiceManager/main.ui", self)
+        # uic.loadUi("./VoiceManager/main.ui", self)
         self.projects: dict[str, Project] = {}
         self.diffFileActions = {}
 
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+        self.setAcceptDrops(True)
+
         self.initProjects()
         self.initWidgets()
+        self.initProjectsWindow()
+        self.charaDefine = loadCharaDefine()
 
     def initMenus(self) -> None:
         # 初始化菜单栏
         # 1.fileMenu
-        self.actionOpen: QAction
-        self.actionSave: QAction
         self.initFileActions()
-        self.actionOpen.triggered.connect(self.onOpenFile)
-        self.actionSave.triggered.connect(self.onSaveFile)
-        self.actionOpenProject.triggered.connect(self.onOpenProject)
+        self.ui.actionOpen.triggered.connect(self.onOpenFileActionTriggered)
+        self.ui.actionOpenProject.triggered.connect(self.onOpenProjectActionTriggered)
+        self.ui.actionProjects.triggered.connect(self.onProjectsActionTriggered)
+        self.ui.actionSaveProject.triggered.connect(self.onSaveProjectActionTriggered)
+        self.ui.actionusage.triggered.connect(self.onUsageActionTriggered)
 
     def initProjects(self) -> None:
         # 初始化项目列表
@@ -54,18 +69,114 @@ class VMMainWindow(QMainWindow):
         self.projects = {projName: Project(projName, projSettings) for projName, projSettings in projects.items()}
 
     def initWidgets(self) -> None:
-        self.initMenus()
 
-        self.searchTextEdit.textChanged.connect(self.onSearchTextChanged)
-        self.searchTextEdit.setDisabled(False)
+        self.initMenus()
+        self.ui.searchTextEdit.setDisabled(False)
+        self.ui.searchModeBox.addItems(SearchText.getSearchModeTranslationList())
         # 初始化窗口函数
         self.projectReadySignal.connect(self.onProjectReady)
         # 设置tableview样式
-        self.sqlView: QTableView
-        self.sqlView.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sqlView.verticalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.ui.sqlView.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.ui.sqlView.verticalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+        # 设置tableview底部不吸附
+        self.ui.sqlView.verticalHeader().setStretchLastSection(False)
+        self.ui.sqlView.setAcceptDrops(True)
+        d = ProjectViewDelegate(self.ui.sqlView)
+        self.ui.sqlView.setItemDelegate(d)
+        # 将检索栏的所有小部件设置为禁用
+        self.ui.groupBox.setEnabled(False)
 
-    def onOpenFile(self) -> None:
+        self.ui.lastPageButton.clicked.connect(self.onLastPageBtnClicked)
+        self.ui.nextPageButton.clicked.connect(self.onNextPageBtnClicked)
+        self.ui.numberPerPageCB.currentTextChanged.connect(self.onNumberPerPageChanged)
+        self.ui.searchButton.clicked.connect(self.onSearchBtnClicked)
+        self.ui.resetSearchButton.clicked.connect(self.onResetSearchBtnClicked)
+        self.ui.filterButton.toggled.connect(self.onFilterToggled)
+        self.ui.searchTextEdit.returnPressed.connect(self.onSearchBtnClicked)
+
+        if len(self.projects) == 0:
+            self.ui.actionOpenProject.setDisabled(True)
+
+    def onLastPageBtnClicked(self):
+        proj = self.workingProject
+        if proj is None:
+            return
+        proj.status["currentPage"] -= 1
+        self.freshSqlView()
+
+    def onNextPageBtnClicked(self):
+        proj = self.workingProject
+        if proj is None:
+            return
+        proj.status["currentPage"] += 1
+        self.freshSqlView()
+
+    def onNumberPerPageChanged(self, text: str):
+        proj = self.workingProject
+        if proj is None:
+            return
+        proj.status["numberPerPage"] = int(text)
+        self.freshSqlView()
+
+    def onResetSearchBtnClicked(self):
+        proj: Project = self.workingProject
+        ctb = proj.status.get("currentTableName", proj.projSettings["dataBase"]["table_name"])
+        if ctb != proj.projSettings["dataBase"]["table_name"]:
+            proj.status["currentTableName"] = proj.projSettings["dataBase"]["table_name"]
+            self.freshSqlView()
+
+    def onSearchBtnClicked(self):
+        # 禁用检索按钮,防止重复检索
+        if self.workingProject is None:
+            return
+        self.ui.searchButton.setDisabled(True)
+        searchTablesName = ["TEMP_SEARCH1", "TEMP_SEARCH2"]
+        proj: Project = self.workingProject
+        currentTableName = proj.status.get("currentTableName", proj.projSettings['dataBase']["table_name"])
+        srcTableName = proj.projSettings['dataBase']["table_name"]
+        oldSearchTableName = currentTableName if currentTableName in searchTablesName else None
+        if currentTableName not in searchTablesName:
+            newSearchTableName = searchTablesName[0]
+        else:
+            searchTablesName.pop(searchTablesName.index(currentTableName))
+            newSearchTableName = searchTablesName[0]
+
+            # 新建一个用于存放检索的表
+        _sql = f"CREATE TABLE {newSearchTableName} ("
+        _sql += ', '.join([f'{headerData["name"]} {headerData["type"]}' for headerData in
+                           proj.projSettings['dataBase']['headers']])
+        _sql += ")"
+
+        query = QSqlQuery(proj.sqlDatabase)
+        query.exec(_sql)
+        print(_sql)
+
+        searchText = self.ui.searchTextEdit.text()
+        searchMode = SearchText.getSearchMode(self.ui.searchModeBox.currentText())
+        searchPattern = SearchText.getSQLLikePattern(searchText, searchMode)
+
+        filterEnabled = self.ui.filterButton.isChecked()
+        _filter = f"{self.workingProject.voiceColumnName} IS NULL AND " if filterEnabled else ""
+
+        # 将检索结果插入新表
+        _sql = f"INSERT INTO {newSearchTableName} SELECT * FROM {srcTableName} WHERE {_filter}{self.ui.columnBox.currentText()} LIKE '{searchPattern}'"
+        query.exec(_sql)
+        print(_sql)
+
+        # 更改sqlView中的数据
+        proj.status["currentTableName"] = newSearchTableName
+        # 刷新sqlView
+        self.freshSqlView()
+
+        if oldSearchTableName is not None:
+            _sql = f"DROP TABLE {oldSearchTableName}"
+            query.exec(_sql)
+            print(_sql)
+
+        self.ui.searchButton.setEnabled(True)
+        return
+
+    def onOpenFileActionTriggered(self) -> None:
         _filter = ""
         for k in self.diffFileActions.keys():
             _filter += k + ";;"
@@ -74,21 +185,97 @@ class VMMainWindow(QMainWindow):
         if fileName != '':
             self.diffFileActions[fi1ter](fileName)
 
-    @pyqtSlot(Project)
-    def onProjectReady(self, project) -> None:
-        self.workingProject = project
-        self.sqlView: QTableView
+    def onProjectsActionTriggered(self) -> None:
+        self.projectsWindow.show()
+
+    def onSaveProjectActionTriggered(self) -> None:
         if self.workingProject is not None:
-            self.searchTextEdit.setDisabled(True)
-            self.sqlView.setModel(project.sqlDatabaseModel)
-            self.sqlView.resizeColumnsToContents()
-            self.sqlView.resizeRowsToContents()
-            self.sqlView.horizontalHeader().setStretchLastSection(True)
-            self.sqlView.verticalHeader().setStretchLastSection(True)
+            self.workingProject.save()
+            print(f"project:{self.workingProject.projName} saved")
+
+    def onUsageActionTriggered(self) -> None:
+        QMessageBox.information(self, "信息与用法",
+                                "仓库:https://github.com/AresConnor/RenpySimpleVoiceManager\n作者:AresConnor(爱喝矿泉水)")
+
+    @pyqtSlot(Project)
+    def onProjectReady(self, project: Project) -> None:
+        # 代表了至少存在一个项目
+        if not self.ui.actionOpenProject.isEnabled():
+            self.ui.actionOpenProject.setEnabled(True)
+
+        # 自动保存前一个project
+        if self.workingProject is not None and self.workingProject.projName != project.projName:
+            print(f"auto saved current project:{self.workingProject.projName}")
+            self.workingProject.save()
+
+        self.workingProject = project
+        if self.workingProject is not None:
+            self.ui.sqlView.setModel(project.sqlDatabaseModel)
+            project.sqlDatabaseModel.dataChanged.connect(self.onSqlViewDataChanged)
+            self.freshSqlView()
+
+            self.ui.sqlView.resizeColumnsToContents()
+            self.ui.sqlView.resizeRowsToContents()
+            self.ui.sqlView.horizontalHeader().setStretchLastSection(True)
+            self.ui.sqlView.verticalHeader().setStretchLastSection(False)
+
+            self.ui.columnBox.addItems(
+                [header["name"] for header in project.projSettings["dataBase"]["headers"] if header["type"] != "BLOB"])
+            # 将检索栏的所有小部件设置为禁用
+            if not self.ui.groupBox.isEnabled():
+                self.ui.groupBox.setEnabled(True)
+
             QCoreApplication.processEvents()
 
-    def onSearchTextChanged(self, text: str) -> None:
-        pass
+    def closeWorkingProject(self) -> None:
+        if self.workingProject is not None:
+            self.ui.sqlView.setModel(None)
+            self.workingProject.close()
+            self.workingProject = None
+            self.ui.columnBox.clear()
+            self.ui.groupBox.setDisabled(True)
+
+    def freshSqlView(self) -> None:
+        self.workingProject: Project
+        self.sqlView: QTableView
+        proj = self.workingProject
+        if not proj.isOpen():
+            proj.open()
+        currentTableName = proj.status.get("currentTableName", proj.projSettings["dataBase"]["table_name"])
+
+        filterEnabled = self.ui.filterButton.isChecked()
+        _filter = f"WHERE {self.workingProject.voiceColumnName} IS NULL " if filterEnabled else ""
+        numPerPage = int(self.ui.numberPerPageCB.currentText())
+        page = proj.status.get("currentPage", 0)
+        maxIndex = proj.getDBTotalNum(_filter)
+
+        maxPage = maxIndex // numPerPage if maxIndex % numPerPage == 0 else maxIndex // numPerPage + 1
+        if page < 1:
+            page = 1
+            proj.status["currentPage"] = 1
+        elif page == 1:
+            self.ui.lastPageButton.setDisabled(True)
+        elif 1 < page < maxPage:
+            self.ui.lastPageButton.setDisabled(False)
+            self.ui.nextPageButton.setDisabled(False)
+        elif page == maxPage:
+            self.ui.nextPageButton.setDisabled(True)
+        elif page > maxPage:
+            page = maxPage
+            proj.status["currentPage"] = maxPage
+
+        self.ui.currentPageLabel.setText(f"{page}/{maxPage}")
+        beginIndex = page * numPerPage - numPerPage
+        query = QSqlQuery(
+            f"select * from {currentTableName} {_filter}limit {beginIndex}, {self.ui.numberPerPageCB.currentText()}")
+        self.ui.sqlView.model().setQuery(query)
+        print(query.lastQuery())
+
+    def onSqlViewDataChanged(self, topLeft, bottomRight, roles=...) -> None:
+        self.freshSqlView()
+
+    def onFilterToggled(self, check: bool) -> None:
+        self.freshSqlView()
 
     def onSaveFile(self):
         pass
@@ -115,7 +302,7 @@ class VMMainWindow(QMainWindow):
                         self.projects.pop(projName).remove()
                     except Exception as e:
                         QMessageBox.critical(self, "错误", f"删除工程{projName}时出现错误{e}")
-                        self.projects
+                        self.projects.pop(projName).remove()
                         return None
                     projObj = Project(projName)
                     self.projects.update({projName: projObj})
@@ -131,17 +318,20 @@ class VMMainWindow(QMainWindow):
                 Qt.WindowType.Dialog | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.WindowTitleHint)
             progressDialog.setWindowModality(Qt.WindowModality.WindowModal)
             progressDialog.show()
-            i = 0
+            i = 1
             for _data in data:
-                # _data.append(QByteArray())
+                _data = translateCharacter(_data,self.charaDefine)
+                _data.insert(0, i)
+                _data.append(None)
                 projObj.dataBaseInsertData(_data)
-                i += 1
+
                 progressDialog.setValue(i)
                 QCoreApplication.processEvents()
                 if progressDialog.wasCanceled():
                     projObj.remove()
                     self.projects.pop(projName)
                     return None
+                i += 1
             progressDialog.setValue(len(data))
 
             # 保存Projects.json
@@ -155,8 +345,11 @@ class VMMainWindow(QMainWindow):
         else:
             return None
 
-    def onOpenProject(self) -> None:
+    def onOpenProjectActionTriggered(self) -> None:
         projName, received = QInputDialog.getItem(self, "打开项目...", "请选择项目", self.projects.keys(), 0, False,
                                                   Qt.WindowType.Dialog | Qt.WindowType.CustomizeWindowHint | Qt.WindowType.WindowTitleHint)
         if received:
             self.projectReadySignal.emit(self.projects[projName])
+
+    def initProjectsWindow(self):
+        self.projectsWindow = ProjectDialog(parent=self)

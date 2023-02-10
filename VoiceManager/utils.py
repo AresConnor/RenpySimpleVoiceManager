@@ -1,8 +1,8 @@
 import csv
-import os.path
-import shutil
-
-from PyQt6.QtSql import QSqlDatabase, QSqlTableModel, QSqlQuery
+import json
+import tempfile
+from enum import Enum
+from json import JSONDecodeError
 
 default_project_settings = {
     "dataBase": {
@@ -11,32 +11,38 @@ default_project_settings = {
         "table_name": "ScriptTable",
         "headers": [
             {
+                "name": "Ordinals",
+                "type": "INTEGER"
+            },
+            {
                 "name": "Identifier",
+                "type": "TEXT PRIMARY KEY NOT NULL"
+            },
+            {
+                "name": "Character",
+                "type": "TEXT"
+            },
+            {
+                "name": "Dialogue",
+                "type": "TEXT"
+            },
+            {
+                "name": "Filename",
                 "type": "TEXT"
 
             },
             {
-                "name":"Character",
-                "type":"TEXT"
+                "name": "LineNumber",
+                "type": "TEXT"
             },
             {
-                "name":"Dialogue",
-                "type":"TEXT"
-            },
-            {
-                "name":"Filename",
-                "type":"TEXT"
-
-            },
-            {
-                "name":"LineNumber",
-                "type":"TEXT"
-            },
-            {
-
                 "name": "RenPyScript",
                 "type": "TEXT"
             },
+            {
+                "name": "VoiceFile",
+                "type": "BLOB"
+            }
 
         ]
     },
@@ -55,76 +61,92 @@ def readTabFile(fileName):
     return headColumn, dataColumns
 
 
+def loadCharaDefine():
+    try:
+        with open("chara_define.json", 'r', encoding='utf-8') as f:
+            charaDefine = json.load(f)
+            charaDefine.pop("_TIME")
+            charaDefine = {v: k for k, v in charaDefine.items()}
+            print("load chara_define.json success")
+    except FileNotFoundError:
+        charaDefine = None
+    except JSONDecodeError:
+        charaDefine = None
+    return charaDefine
+
+
+def translateCharacter(_data: list, charaDefine=None) -> list:
+    if charaDefine is None:
+        return _data
+    else:
+        _data[1] = charaDefine.get(_data[1], _data[1])
+        if _data[1] == "":
+            _data[1] = "旁白"
+        return _data
+
+
+def get_extension(binary_data):
+    magic_numbers = {
+        b'OggS': '.ogg',
+        b'RIFF': '.wav',
+        b'\x49\x44\x33': '.mp3',
+        b'\x00\x00\x00\x18': '.m4a',
+    }
+    header = binary_data[:4]
+    extension = magic_numbers.get(header, None)
+    return extension
+
+
+def dumpTempAudio(_audioData, _suffix):
+    print("play_audio")
+    f = tempfile.NamedTemporaryFile(mode='wb', suffix=_suffix, dir='', delete=False)
+    f.write(_audioData)
+    f.close()
+    return f.name
+
+
 def readDBFile(fileName):
     pass
 
 
-class Project:
-    def __init__(self, projName, projSettings=None):
-        self.projName = projName
-        self.sqlDatabaseModel:QSqlTableModel
-        self.projSettings: dict = projSettings or default_project_settings
-        self._initDataBase()
+class SearchText:
+    class SearchMode(Enum):
+        IN = 0
+        ALL = 1
+        BEGIN_WITH = 2
+        END_WITH = 3
 
+    _searchModeTranslation = {
+        SearchMode.IN: "匹配部分",
+        SearchMode.ALL: "匹配全部",
+        SearchMode.BEGIN_WITH: "匹配开头",
+        SearchMode.END_WITH: "匹配结尾"
+    }
 
-    def remove(self):
-        self._closeDataBase()
-        shutil.rmtree(f'Projects/{self.projName}')
+    @classmethod
+    def getSearchModeTranslation(cls, mode: SearchMode):
+        return cls._searchModeTranslation[mode]
 
-    def _initDataBase(self):
-        if self.projSettings["dataBase"]["type"] == "sqlite":
-            self.sqlDatabase = QSqlDatabase().addDatabase("QSQLITE")
-            self._ensureWorkingDirectory()
-            self.sqlDatabase.setDatabaseName(self.projSettings["dataBase"]["path"] if self.projSettings["dataBase"][
-                "path"] else f"Projects/{self.projName}/dataBase.db")
-            self.sqlDatabase.open()
-            # 检查表self.projSettings['dataBase']['table_name']是否存在
-            if not self.sqlDatabase.tables().__contains__(self.projSettings['dataBase']['table_name']):
-                # 表不存在，创建表
-                self.sqlQuery = QSqlQuery(self.sqlDatabase)
-                _sql = f"CREATE TABLE {self.projSettings['dataBase']['table_name']} ("
-                _sql += ', '.join([f'{headerData["name"]} {headerData["type"]}' for headerData in self.projSettings['dataBase']['headers']])
-                _sql += ")"
-                self.sqlQuery.exec(_sql)
-                print(self.sqlQuery.lastQuery(),self.sqlQuery.lastError().text())
-            self.sqlDatabaseModel = QSqlTableModel(db=self.sqlDatabase)
-            self.sqlDatabaseModel.setTable(self.projSettings['dataBase']['table_name'])
+    @classmethod
+    def getSearchModeTranslationList(cls):
+        return list(cls._searchModeTranslation.values())
 
+    @classmethod
+    def getSearchMode(cls, translation: str):
+        for key, value in cls._searchModeTranslation.items():
+            if value == translation:
+                return key
+        return None
 
-        elif self.projSettings["dataBase"]["type"] == "mysql":
-            pass
+    @classmethod
+    def getSQLLikePattern(cls, text: str, mode: SearchMode):
+        if mode == cls.SearchMode.IN:
+            return f"%{text}%"
+        elif mode == cls.SearchMode.ALL:
+            return f"{text}"
+        elif mode == cls.SearchMode.BEGIN_WITH:
+            return f"{text}%"
+        elif mode == cls.SearchMode.END_WITH:
+            return f"%{text}"
         else:
-            raise ValueError("Unsupported database type")
-
-    def database(self):
-        return self.sqlDatabase
-
-    def model(self):
-        return self.sqlDatabaseModel
-
-    def dataBaseInsertData(self, data: list):
-        _sql = f"INSERT INTO {self.projSettings['dataBase']['table_name']} VALUES ({', '.join(['?' for _ in range(len(data))])})"
-        # 预备sql语句
-        self.sqlQuery.prepare(_sql)
-        for _data in data:
-            self.sqlQuery.addBindValue(_data)
-        self.sqlQuery.exec()
-        # 检查是否插入成功
-        if self.sqlQuery.lastError().isValid():
-            print(self.sqlQuery.lastError().text())
-            return False
-        return True
-
-
-    def _closeDataBase(self):
-        if self.sqlDatabase.isOpen():
-            self.sqlDatabase.close()
-
-    def _ensureWorkingDirectory(self):
-        if not os.path.exists(f'Projects/{self.projName}'):
-            os.mkdir(f'Projects/{self.projName}')
-            return True
-        else:
-            return False
-    def __del__(self):
-        self._closeDataBase()
+            raise ValueError("Unsupported search mode")
