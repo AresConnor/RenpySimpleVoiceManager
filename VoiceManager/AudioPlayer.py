@@ -1,12 +1,10 @@
-import os
-import sys
 
 from PyQt6 import QtGui
 from PyQt6.QtCore import QUrl, QTimer
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PyQt6.QtWidgets import QDialog, QApplication
+from PyQt6.QtWidgets import QDialog
 
-from RenpySimpleVoiceManager.VoiceManager.ui.audioPlayerUI import AudioPlayerUI
+from .ui.audioPlayerUI import AudioPlayerUI
 
 
 def showDurationTime(duration: int):

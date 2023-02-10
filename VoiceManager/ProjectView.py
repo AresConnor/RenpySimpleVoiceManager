@@ -4,9 +4,9 @@ from PyQt6 import QtCore, QtGui
 from PyQt6.QtCore import QByteArray, Qt
 from PyQt6.QtWidgets import QTableView, QMessageBox
 
-from RenpySimpleVoiceManager.VoiceManager.AudioPlayer import AudioPlayerDialog
-from RenpySimpleVoiceManager.VoiceManager.Widgets import ProjectViewMenu
-from RenpySimpleVoiceManager.VoiceManager.utils import dumpTempAudio, get_extension
+from .AudioPlayer import AudioPlayerDialog
+from .Widgets import ProjectViewMenu
+from .utils import dumpTempAudio, get_extension
 
 
 class ProjectView(QTableView):

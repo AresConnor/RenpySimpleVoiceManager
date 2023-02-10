@@ -4,7 +4,7 @@ from PyQt6 import QtCore
 from PyQt6.QtCore import Qt, QByteArray
 from PyQt6.QtSql import QSqlTableModel, QSqlQuery, QSqlDatabase
 
-from RenpySimpleVoiceManager.VoiceManager.utils import get_extension
+from .utils import get_extension
 
 
 def get_mime_type(binary_data):

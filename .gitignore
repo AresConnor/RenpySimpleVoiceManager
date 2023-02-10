@@ -1,3 +1,5 @@
 Projects/*
 chara_define.json
 **/**.pyc
+build
+dist

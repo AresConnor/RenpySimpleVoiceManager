@@ -6,10 +6,10 @@ from PyQt6.QtCore import QStringListModel, Qt
 from PyQt6.QtSql import QSqlTableModel, QSqlDatabase, QSqlQuery
 from PyQt6.QtWidgets import  QDialog
 
-from RenpySimpleVoiceManager.VoiceManager import VMMainWindow
-from RenpySimpleVoiceManager.VoiceManager.models import MySqlTableModel
-from RenpySimpleVoiceManager.VoiceManager.ui.ProjectDialog import ProjectUI
-from RenpySimpleVoiceManager.VoiceManager.utils import default_project_settings
+from . import VMMainWindow
+from .models import MySqlTableModel
+from .ui.ProjectDialog import ProjectUI
+from .utils import default_project_settings
 
 
 class Project:
