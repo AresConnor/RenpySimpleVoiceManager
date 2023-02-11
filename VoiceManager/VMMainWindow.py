@@ -16,7 +16,7 @@ from .utils import readTabFile, SearchText, loadCharaDefine, translateCharacter
 
 class VMMainWindow(QMainWindow):
     def dropEvent(self, a0: QtGui.QDropEvent) -> None:
-        print(self.__class__.__name__,"dropEvent")
+        print(self.__class__.__name__, "dropEvent")
         a0.accept()
         super().dropEvent(a0)
 
@@ -151,7 +151,7 @@ class VMMainWindow(QMainWindow):
 
         query = QSqlQuery(proj.sqlDatabase)
         query.exec(_sql)
-        print(self.__class__.__name__,_sql)
+        print(self.__class__.__name__, _sql)
 
         searchText = self.ui.searchTextEdit.text()
         searchMode = SearchText.getSearchMode(self.ui.searchModeBox.currentText())
@@ -163,7 +163,7 @@ class VMMainWindow(QMainWindow):
         # 将检索结果插入新表
         _sql = f"INSERT INTO {newSearchTableName} SELECT * FROM {srcTableName} WHERE {_filter}{self.ui.columnBox.currentText()} LIKE '{searchPattern}'"
         query.exec(_sql)
-        print(self.__class__.__name__,_sql)
+        print(self.__class__.__name__, _sql)
 
         # 更改sqlView中的数据
         proj.status["currentTableName"] = newSearchTableName
@@ -173,7 +173,7 @@ class VMMainWindow(QMainWindow):
         if oldSearchTableName is not None:
             _sql = f"DROP TABLE {oldSearchTableName}"
             query.exec(_sql)
-            print(self.__class__.__name__,_sql)
+            print(self.__class__.__name__, _sql)
 
         self.ui.searchButton.setEnabled(True)
         return
@@ -193,11 +193,12 @@ class VMMainWindow(QMainWindow):
     def onSaveProjectActionTriggered(self) -> None:
         if self.workingProject is not None:
             self.workingProject.save()
-            print(self.__class__.__name__,f"project:{self.workingProject.projName} saved")
+            print(self.__class__.__name__, f"project:{self.workingProject.projName} saved")
 
     def onUsageActionTriggered(self) -> None:
         QMessageBox.information(self, "信息与用法",
-                                f"仓库:https://github.com/AresConnor/RenpySimpleVoiceManager\n作者:AresConnor(爱喝矿泉水)\n\n平台支持的播放格式:\n{self.ui.sqlView.supportFormat}")
+                                f"仓库:https://github.com/AresConnor/RenpySimpleVoiceManager\n作者:AresConnor("
+                                f"爱喝矿泉水)\n\n平台支持的播放格式:\n{', '.join(self.ui.sqlView.supportFormat)}")
 
     @Slot(Project)
     def onProjectReady(self, project: Project) -> None:
@@ -207,7 +208,7 @@ class VMMainWindow(QMainWindow):
 
         # 自动保存前一个project
         if self.workingProject is not None and self.workingProject.projName != project.projName:
-            print(self.__class__.__name__,f"auto saved current project:{self.workingProject.projName}")
+            print(self.__class__.__name__, f"auto saved current project:{self.workingProject.projName}")
             self.workingProject.save()
 
         self.workingProject = project
@@ -271,7 +272,7 @@ class VMMainWindow(QMainWindow):
         query = QSqlQuery(
             f"select * from {currentTableName} {_filter}limit {beginIndex}, {self.ui.numberPerPageCB.currentText()}")
         self.ui.sqlView.model().setQuery(query)
-        print(self.__class__.__name__,query.lastQuery())
+        print(self.__class__.__name__, query.lastQuery())
 
     def onSqlViewDataChanged(self, topLeft, bottomRight, roles=...) -> None:
         self.freshSqlView()
@@ -286,7 +287,7 @@ class VMMainWindow(QMainWindow):
 
         self.diffFileActions = {
             "制表文件 (*.tab)": self.createNewProject,
-            "数据库 (*.db)": lambda _, fileName: print(self.__class__.__name__,"暂未实现")
+            "数据库 (*.db)": lambda _, fileName: print(self.__class__.__name__, "暂未实现")
         }
 
     def createNewProject(self, fileName) -> None:

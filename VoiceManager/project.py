@@ -37,6 +37,13 @@ class Project:
             json.dump(projects, f, ensure_ascii=False, indent=4)
         # 提交所有事务
         self.sqlDatabase.commit()
+        # vacuum
+        try:
+            if self.projSettings["dataBase"]["type"] == "sqlite" and self.projSettings["dataBase"]["VACUUM"]:
+                r = self.sqlQuery.exec("VACUUM")
+                print(self.__class__.__name__, "try to vacuum", r)
+        except:
+            pass
 
     def remove(self):
         self._closeDataBase()
@@ -49,6 +56,13 @@ class Project:
             self.sqlDatabase.setDatabaseName(self.projSettings["dataBase"]["path"] if self.projSettings["dataBase"][
                 "path"] else f"Projects/{self.projName}/dataBase.db")
             self.sqlDatabase.open()
+            # 启用auto-vacuum incremental模式
+            self.sqlQuery = QSqlQuery(self.sqlDatabase)
+            autoVacuumMode = self.projSettings["dataBase"].get("AUTO_VACUUM", "INCREMENTAL")
+            if autoVacuumMode not in ["NONE", "FULL", "INCREMENTAL"]:
+                autoVacuumMode = "INCREMENTAL"
+            self.sqlQuery.exec(f"PRAGMA auto_vacuum = {autoVacuumMode}")
+            print(self.__class__.__name__, "enable auto-vacuum incremental mode")
             # 检查表self.projSettings['dataBase']['table_name']是否存在
             if not self.sqlDatabase.tables().__contains__(self.projSettings['dataBase']['table_name']):
                 # 表不存在，创建表
@@ -58,7 +72,7 @@ class Project:
                                    self.projSettings['dataBase']['headers']])
                 _sql += ")"
                 self.sqlQuery.exec(_sql)
-                print(self.__class__.__name__,self.sqlQuery.lastQuery(), self.sqlQuery.lastError().text())
+                print(self.__class__.__name__, self.sqlQuery.lastQuery(), self.sqlQuery.lastError().text())
             self.sqlDatabaseModel = MySqlTableModel(self, db=self.sqlDatabase)
             self.sqlDatabaseModel.setTable(self.projSettings['dataBase']['table_name'])
 
@@ -98,7 +112,7 @@ class Project:
         query.exec()
         # 检查是否插入成功
         if query.lastError().isValid():
-            print(self.__class__.__name__,query.lastError().text())
+            print(self.__class__.__name__, query.lastError().text())
             return False
         # 为了让model更新数据，需要调用select()方法
         return True
@@ -164,7 +178,7 @@ class ProjectDialog(QDialog):
         # 更新项目列表
         projNames = self.getProjects()
         self.projectListModel.setStringList(projNames)
-        print(self.__class__.__name__,f"Project {self.selectedProject} removed")
+        print(self.__class__.__name__, f"Project {self.selectedProject} removed")
 
     def onProjectListViewPressed(self, index):
         self.ui.openProjBtn.setEnabled(True)

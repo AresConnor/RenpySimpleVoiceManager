@@ -114,5 +114,4 @@ class AudioPlayerDialog(QDialog):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.mediaPlayer.stop()
         self.mediaPlayer.setSource(QUrl())
-        self.mediaPlayer.disconnect()
         super().closeEvent(a0)

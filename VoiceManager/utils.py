@@ -11,46 +11,52 @@ default_project_settings = {
         "table_name": "ScriptTable",
         "headers": [
             {
-                "name": "Ordinals",
+                "name": "序号",
                 "type": "INTEGER"
             },
             {
-                "name": "Identifier",
+                "name": "台词标识名",
                 "type": "TEXT PRIMARY KEY NOT NULL"
             },
             {
-                "name": "Character",
+                "name": "角色",
                 "type": "TEXT"
             },
             {
-                "name": "Dialogue",
+                "name": "台词内容",
                 "type": "TEXT"
             },
             {
-                "name": "Filename",
+                "name": "文件名",
                 "type": "TEXT"
 
             },
             {
-                "name": "LineNumber",
+                "name": "行号",
                 "type": "TEXT"
             },
             {
-                "name": "RenPyScript",
+                "name": "RenPy脚本",
                 "type": "TEXT"
             },
             {
-                "name": "VoiceFile",
+                "name": "语音文件",
                 "type": "BLOB"
             },
             {
-                "name":"VoiceFileFormat",
-                "type":"TEXT"
+                "name": "语音文件格式",
+                "type": "TEXT"
             }
-        ]
+        ],
+        "VACUUM": True,
+        "AUTO_VACUUM": "INCREMENTAL",
     },
     "info": {
-        "dataBase": "do not modifier headers,unless Renpy officially changed the format of the exported dialogue file."
+        "dataBase": {
+            "headers": "do not modifier headers,unless Renpy officially changed the format of the exported dialogue file.",
+            "VACUUM": "VACUUM is a command that reclaims unused space in a database file.",
+            "AUTO_VACUUM": "AUTO_VACUUM is a pragma that controls the automatic vacuuming of a database file.NONE/FULL/INCREMENTAL"
+        }
     }
 }
 
@@ -89,7 +95,7 @@ def translateCharacter(_data: list, charaDefine=None) -> list:
 
 
 def dumpTempAudio(_audioData, _suffix):
-    print("utils","play_audio")
+    print("utils", "play_audio")
     f = tempfile.NamedTemporaryFile(mode='wb', suffix=_suffix, dir='', delete=False)
     f.write(_audioData)
     f.close()
