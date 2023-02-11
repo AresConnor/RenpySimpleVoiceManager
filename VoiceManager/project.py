@@ -4,7 +4,7 @@ import shutil
 
 from PyQt6.QtCore import QStringListModel, Qt
 from PyQt6.QtSql import QSqlTableModel, QSqlDatabase, QSqlQuery
-from PyQt6.QtWidgets import  QDialog
+from PyQt6.QtWidgets import QDialog
 
 from . import VMMainWindow
 from .models import MySqlTableModel
@@ -58,7 +58,7 @@ class Project:
                                    self.projSettings['dataBase']['headers']])
                 _sql += ")"
                 self.sqlQuery.exec(_sql)
-                print(self.sqlQuery.lastQuery(), self.sqlQuery.lastError().text())
+                print(self.__class__.__name__,self.sqlQuery.lastQuery(), self.sqlQuery.lastError().text())
             self.sqlDatabaseModel = MySqlTableModel(self, db=self.sqlDatabase)
             self.sqlDatabaseModel.setTable(self.projSettings['dataBase']['table_name'])
 
@@ -98,7 +98,7 @@ class Project:
         query.exec()
         # 检查是否插入成功
         if query.lastError().isValid():
-            print(query.lastError().text())
+            print(self.__class__.__name__,query.lastError().text())
             return False
         # 为了让model更新数据，需要调用select()方法
         return True
@@ -157,14 +157,14 @@ class ProjectDialog(QDialog):
             # 删除项目
             self.parent.projects.pop(self.selectedProject).remove()
         # 保存Projects.json
-        with open("Projects/Projects.json", "w") as f:
+        with open("Projects/Projects.json", "w", encoding='utf-8') as f:
             json.dump({projObj.projName: projObj.projSettings for projObj in self.parent.projects.values()}, f,
                       indent=4,
                       ensure_ascii=False, sort_keys=True)
         # 更新项目列表
         projNames = self.getProjects()
         self.projectListModel.setStringList(projNames)
-        print(f"Project {self.selectedProject} removed")
+        print(self.__class__.__name__,f"Project {self.selectedProject} removed")
 
     def onProjectListViewPressed(self, index):
         self.ui.openProjBtn.setEnabled(True)

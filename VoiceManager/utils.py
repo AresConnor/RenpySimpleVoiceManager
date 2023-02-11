@@ -42,8 +42,11 @@ default_project_settings = {
             {
                 "name": "VoiceFile",
                 "type": "BLOB"
+            },
+            {
+                "name":"VoiceFileFormat",
+                "type":"TEXT"
             }
-
         ]
     },
     "info": {
@@ -85,20 +88,8 @@ def translateCharacter(_data: list, charaDefine=None) -> list:
         return _data
 
 
-def get_extension(binary_data):
-    magic_numbers = {
-        b'OggS': '.ogg',
-        b'RIFF': '.wav',
-        b'\x49\x44\x33': '.mp3',
-        b'\x00\x00\x00\x18': '.m4a',
-    }
-    header = binary_data[:4]
-    extension = magic_numbers.get(header, None)
-    return extension
-
-
 def dumpTempAudio(_audioData, _suffix):
-    print("play_audio")
+    print("utils","play_audio")
     f = tempfile.NamedTemporaryFile(mode='wb', suffix=_suffix, dir='', delete=False)
     f.write(_audioData)
     f.close()

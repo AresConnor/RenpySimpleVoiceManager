@@ -1,7 +1,6 @@
-
 from PyQt6 import QtGui
 from PyQt6.QtCore import QUrl, QTimer
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaFormat, QMediaRecorder
 from PyQt6.QtWidgets import QDialog
 
 from .ui.audioPlayerUI import AudioPlayerUI
@@ -18,13 +17,27 @@ def showDurationTime(duration: int):
     return f"{minutes:02d}:{seconds:02d}"
 
 
+def getSupportAudioFormat1():
+    supportMimeType = set()
+    for fileFormat in QMediaFormat().supportedFileFormats(QMediaFormat.ConversionMode.Decode):
+        supportMimeType.update(QMediaFormat(fileFormat).mimeType().suffixes())
+    supportMimeType.add("wav")
+    supportMimeType = tuple(supportMimeType)
+    return supportMimeType
+
+
+def getSupportAudioFormat():
+    rv = ("wav", "mp3", "m4a", "flac", "aac", "wma")
+    return rv
+
+
 class AudioPlayerDialog(QDialog):
-    def __init__(self, title, audio_file, parent=None):
+    def __init__(self, title, audioFile, parent=None):
         super().__init__(parent)
 
         # Load the UI file
         self.updateSliderPosition = None
-        self.audio_file = audio_file
+        self.audio_file = audioFile
         self.ui = AudioPlayerUI()
         self.ui.setupUi(self)
         self.ui.audioPosSlider.setTickInterval(0)
@@ -39,11 +52,14 @@ class AudioPlayerDialog(QDialog):
         self.audioOutput = QAudioOutput()
         self.audioOutput.setVolume(0.5)
 
+        # debug
+        self.mediaPlayer.errorOccurred.connect(lambda e, m: print(self.__class__.__name__, e, m))
+
         # Set the audio output
         self.mediaPlayer.setAudioOutput(self.audioOutput)
 
         # read audio file
-        self.mediaPlayer.setSource(QUrl.fromLocalFile(audio_file))
+        self.mediaPlayer.setSource(QUrl.fromLocalFile(audioFile))
 
         # link the buttons to the media player
         self.ui.playBtn.clicked.connect(self.mediaPlayer.play)
@@ -72,7 +88,7 @@ class AudioPlayerDialog(QDialog):
         # apply relative value in audio volume slider to audio output
         self.ui.volumeSlider.valueChanged.connect(lambda v: {
             self.audioOutput.setVolume(v / 100),
-            self.ui.currentVolume.setText(f"{v}%".rjust(4," "))
+            self.ui.currentVolume.setText(f"{v}%".rjust(4, " "))
         })
 
         self.mediaPlayer.play()

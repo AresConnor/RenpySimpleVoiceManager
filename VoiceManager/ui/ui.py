@@ -8,7 +8,7 @@
 
 from PyQt6 import QtCore, QtGui, QtWidgets
 
-from RenpySimpleVoiceManager.VoiceManager.ProjectView import ProjectView
+from ..ProjectView import ProjectView
 
 
 class Ui_MainWindow(object):

@@ -14,7 +14,7 @@ from .utils import readTabFile, SearchText, loadCharaDefine, translateCharacter
 
 class VMMainWindow(QMainWindow):
     def dropEvent(self, a0: QtGui.QDropEvent) -> None:
-        print("dropEvent")
+        print(self.__class__.__name__,"dropEvent")
         a0.accept()
         super().dropEvent(a0)
 
@@ -61,10 +61,10 @@ class VMMainWindow(QMainWindow):
         if not os.path.exists("Projects/Projects.json"):
             if not os.path.exists("Projects"):
                 os.mkdir("Projects")
-            with open("Projects/Projects.json", "w") as f:
+            with open("Projects/Projects.json", "w", encoding='utf-8') as f:
                 f.write("{}")
         # 读取Projects.json
-        with open("Projects/Projects.json", "r") as f:
+        with open("Projects/Projects.json", "r", encoding='utf-8') as f:
             projects = json.load(f)
         self.projects = {projName: Project(projName, projSettings) for projName, projSettings in projects.items()}
 
@@ -149,7 +149,7 @@ class VMMainWindow(QMainWindow):
 
         query = QSqlQuery(proj.sqlDatabase)
         query.exec(_sql)
-        print(_sql)
+        print(self.__class__.__name__,_sql)
 
         searchText = self.ui.searchTextEdit.text()
         searchMode = SearchText.getSearchMode(self.ui.searchModeBox.currentText())
@@ -161,7 +161,7 @@ class VMMainWindow(QMainWindow):
         # 将检索结果插入新表
         _sql = f"INSERT INTO {newSearchTableName} SELECT * FROM {srcTableName} WHERE {_filter}{self.ui.columnBox.currentText()} LIKE '{searchPattern}'"
         query.exec(_sql)
-        print(_sql)
+        print(self.__class__.__name__,_sql)
 
         # 更改sqlView中的数据
         proj.status["currentTableName"] = newSearchTableName
@@ -171,7 +171,7 @@ class VMMainWindow(QMainWindow):
         if oldSearchTableName is not None:
             _sql = f"DROP TABLE {oldSearchTableName}"
             query.exec(_sql)
-            print(_sql)
+            print(self.__class__.__name__,_sql)
 
         self.ui.searchButton.setEnabled(True)
         return
@@ -191,11 +191,11 @@ class VMMainWindow(QMainWindow):
     def onSaveProjectActionTriggered(self) -> None:
         if self.workingProject is not None:
             self.workingProject.save()
-            print(f"project:{self.workingProject.projName} saved")
+            print(self.__class__.__name__,f"project:{self.workingProject.projName} saved")
 
     def onUsageActionTriggered(self) -> None:
         QMessageBox.information(self, "信息与用法",
-                                "仓库:https://github.com/AresConnor/RenpySimpleVoiceManager\n作者:AresConnor(爱喝矿泉水)")
+                                f"仓库:https://github.com/AresConnor/RenpySimpleVoiceManager\n作者:AresConnor(爱喝矿泉水)\n\n平台支持的播放格式:\n{self.ui.sqlView.supportFormat}")
 
     @pyqtSlot(Project)
     def onProjectReady(self, project: Project) -> None:
@@ -205,7 +205,7 @@ class VMMainWindow(QMainWindow):
 
         # 自动保存前一个project
         if self.workingProject is not None and self.workingProject.projName != project.projName:
-            print(f"auto saved current project:{self.workingProject.projName}")
+            print(self.__class__.__name__,f"auto saved current project:{self.workingProject.projName}")
             self.workingProject.save()
 
         self.workingProject = project
@@ -269,7 +269,7 @@ class VMMainWindow(QMainWindow):
         query = QSqlQuery(
             f"select * from {currentTableName} {_filter}limit {beginIndex}, {self.ui.numberPerPageCB.currentText()}")
         self.ui.sqlView.model().setQuery(query)
-        print(query.lastQuery())
+        print(self.__class__.__name__,query.lastQuery())
 
     def onSqlViewDataChanged(self, topLeft, bottomRight, roles=...) -> None:
         self.freshSqlView()
@@ -284,7 +284,7 @@ class VMMainWindow(QMainWindow):
 
         self.diffFileActions = {
             "制表文件 (*.tab)": self.createNewProject,
-            "数据库 (*.db)": lambda _, fileName: print("暂未实现")
+            "数据库 (*.db)": lambda _, fileName: print(self.__class__.__name__,"暂未实现")
         }
 
     def createNewProject(self, fileName) -> None:
@@ -320,9 +320,9 @@ class VMMainWindow(QMainWindow):
             progressDialog.show()
             i = 1
             for _data in data:
-                _data = translateCharacter(_data,self.charaDefine)
+                _data = translateCharacter(_data, self.charaDefine)
                 _data.insert(0, i)
-                _data.append(None)
+                _data.extend([None, ""])
                 projObj.dataBaseInsertData(_data)
 
                 progressDialog.setValue(i)
@@ -335,7 +335,7 @@ class VMMainWindow(QMainWindow):
             progressDialog.setValue(len(data))
 
             # 保存Projects.json
-            with open("Projects/Projects.json", "w") as f:
+            with open("Projects/Projects.json", "w", encoding='utf-8') as f:
                 json.dump({projObj.projName: projObj.projSettings for projObj in self.projects.values()}, f,
                           ensure_ascii=False, sort_keys=True, indent=4)
 

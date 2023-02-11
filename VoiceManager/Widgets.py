@@ -1,11 +1,12 @@
 import os
+from typing import Tuple
 
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import QByteArray, QModelIndex, Qt
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from .AudioPlayer import AudioPlayerDialog
-from .utils import get_extension, dumpTempAudio
+from .utils import dumpTempAudio
 
 
 class ProjectViewMenu(QtWidgets.QMenu):
@@ -17,25 +18,28 @@ class ProjectViewMenu(QtWidgets.QMenu):
         self.addVoiceAction = self.addAction("添加音频")
         self.exportVoiceAction = self.addAction("导出音频")
 
-    def execAction(self, pos, index: QModelIndex, data: bytes = ..., dialogue=..., pk=...):
+    def execAction(self, pos, index: QModelIndex, data: Tuple[bytes, str] = ..., dialogue=..., pk=...):
         action = self.exec(pos)
         if action == self.playVoiceAction:
-            tempF = dumpTempAudio(data, get_extension(data))
+            tempF = dumpTempAudio(data[0], data[1])
             apd = AudioPlayerDialog(dialogue, tempF, self.parent)
             apd.finished.connect(lambda r: {
-                print(f"AudioPlayerDialog finished with {r}"),
+                print(self.__class__.__name__,f"AudioPlayerDialog finished with {r}"),
                 os.remove(tempF)
             })
             apd.exec()
 
         elif action == self.deleteVoiceAction:
-            idx = self.parent.model().index(index.row(), self.parent.model().columnCount() - 1)
+            idx = self.parent.model().index(index.row(), self.parent.model().columnCount() - 2)
             r = self.parent.model().setData(idx, QByteArray(), Qt.ItemDataRole.EditRole)
+            # set data format
+            self.parent.model().setData(self.parent.model().index(idx.row(), idx.column() + 1), "",
+                                        Qt.ItemDataRole.EditRole)
             self.parent.model().dataChanged.emit(idx, idx, [Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole])
             if not r:
                 QMessageBox.critical(self, "错误", f"删除音频失败")
                 return
-            print("deleteVoiceAction")
+            print(self.__class__.__name__,"deleteVoiceAction")
 
         elif action == self.addVoiceAction:
             name, _ = QFileDialog.getOpenFileName(self.parent, "添加音频", "", "音频文件 (*.wav *.mp3 *.ogg *.m4a)")
@@ -47,12 +51,13 @@ class ProjectViewMenu(QtWidgets.QMenu):
                 return
             byteArray = QByteArray()
             byteArray.append(binaryData)
-            col = self.parent.model().columnCount() - 1
-            idx = self.parent.model().index(index.row(), col, index.parent())
-            self.parent.addData(idx, byteArray, name)
+            col = self.parent.model().columnCount() - 2
+            idxData = self.parent.model().index(index.row(), col, index.parent())
+            self.parent.addData(idxData, byteArray, name)
         elif action == self.exportVoiceAction:
-            binaryData = data
-            ext = get_extension(binaryData[:4])
+            binaryData, ext = data
+            col = self.parent.model().columnCount() - 1
+            # idx = self.parent.model().index(index.row(), col, index.parent())
             default_fn = os.path.join(os.getcwd(), f"{pk}{ext}")
             name, _ = QFileDialog.getSaveFileName(self.parent, "导出音频", f"{default_fn}", f"音频文件 (*{ext})")
             if name != '':
@@ -63,6 +68,6 @@ class ProjectViewMenu(QtWidgets.QMenu):
                 except Exception as e:
                     QMessageBox.critical(self, "错误", f"导出文件失败:\n{e}")
                     return
-            print("exportVoiceAction")
+            print(self.__class__.__name__,"exportVoiceAction")
 
         return action
