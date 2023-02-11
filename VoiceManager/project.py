@@ -20,7 +20,7 @@ class Project:
         self.projSettings: dict = projSettings or default_project_settings
         self._initDataBase()
         self.status = {}
-        self.voiceColumnName = self.projSettings['dataBase']['headers'][-1]['name']
+        self.voiceColumnName = self.projSettings['dataBase']['headers'][-2]['name']
 
     def close(self):
         self.save()
