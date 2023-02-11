@@ -1,6 +1,6 @@
-from PyQt6 import QtGui, QtCore, QtWidgets
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
+from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
 
 
 class ProjectViewDelegate(QStyledItemDelegate):

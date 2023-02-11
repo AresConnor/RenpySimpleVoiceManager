@@ -1,7 +1,7 @@
-from PyQt6 import QtGui
-from PyQt6.QtCore import QUrl, QTimer
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaFormat, QMediaRecorder
-from PyQt6.QtWidgets import QDialog
+from PySide6 import QtGui
+from PySide6.QtCore import QUrl, QTimer
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput, QMediaFormat
+from PySide6.QtWidgets import QDialog
 
 from .ui.audioPlayerUI import AudioPlayerUI
 

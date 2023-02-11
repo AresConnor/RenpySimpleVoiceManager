@@ -1,9 +1,9 @@
 import os
 from typing import Tuple
 
-from PyQt6 import QtWidgets
-from PyQt6.QtCore import QByteArray, QModelIndex, Qt
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PySide6 import QtWidgets
+from PySide6.QtCore import QByteArray, QModelIndex, Qt
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from .AudioPlayer import AudioPlayerDialog
 from .utils import dumpTempAudio
