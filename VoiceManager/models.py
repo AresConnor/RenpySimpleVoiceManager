@@ -1,9 +1,8 @@
 import typing
 
-from PyQt6 import QtCore
-from PyQt6.QtCore import Qt, QByteArray
-from PyQt6.QtSql import QSqlTableModel, QSqlQuery, QSqlDatabase
-
+from PySide6 import QtCore
+from PySide6.QtCore import Qt, QByteArray
+from PySide6.QtSql import QSqlTableModel, QSqlQuery, QSqlDatabase
 
 
 def get_mime_type(binary_data):

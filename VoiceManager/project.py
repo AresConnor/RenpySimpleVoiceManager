@@ -2,9 +2,9 @@ import json
 import os
 import shutil
 
-from PyQt6.QtCore import QStringListModel, Qt
-from PyQt6.QtSql import QSqlTableModel, QSqlDatabase, QSqlQuery
-from PyQt6.QtWidgets import QDialog
+from PySide6.QtCore import QStringListModel, Qt
+from PySide6.QtSql import QSqlTableModel, QSqlDatabase, QSqlQuery
+from PySide6.QtWidgets import QDialog
 
 from . import VMMainWindow
 from .models import MySqlTableModel

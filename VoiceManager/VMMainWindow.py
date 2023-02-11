@@ -1,10 +1,12 @@
-from PyQt6 import QtGui
-from PyQt6.QtCore import QCoreApplication, pyqtSignal, pyqtSlot, Qt
-from PyQt6.QtSql import QSqlQuery
-from PyQt6.QtWidgets import QMainWindow, QProgressDialog, QTableView, QPushButton
 import json
 import os
-from PyQt6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
+
+from PySide6 import QtGui
+from PySide6.QtCore import QCoreApplication, Signal, Slot
+from PySide6.QtGui import Qt
+from PySide6.QtSql import QSqlQuery
+from PySide6.QtWidgets import QFileDialog, QInputDialog, QMessageBox
+from PySide6.QtWidgets import QMainWindow, QProgressDialog, QTableView
 
 from .delegates import ProjectViewDelegate
 from .project import Project, ProjectDialog
@@ -18,7 +20,7 @@ class VMMainWindow(QMainWindow):
         a0.accept()
         super().dropEvent(a0)
 
-    projectReadySignal = pyqtSignal(Project)
+    projectReadySignal = Signal(Project)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         super().closeEvent(a0)
@@ -197,7 +199,7 @@ class VMMainWindow(QMainWindow):
         QMessageBox.information(self, "信息与用法",
                                 f"仓库:https://github.com/AresConnor/RenpySimpleVoiceManager\n作者:AresConnor(爱喝矿泉水)\n\n平台支持的播放格式:\n{self.ui.sqlView.supportFormat}")
 
-    @pyqtSlot(Project)
+    @Slot(Project)
     def onProjectReady(self, project: Project) -> None:
         # 代表了至少存在一个项目
         if not self.ui.actionOpenProject.isEnabled():

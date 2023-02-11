@@ -1,8 +1,8 @@
 import os
 
-from PyQt6 import QtCore, QtGui
-from PyQt6.QtCore import QByteArray, Qt
-from PyQt6.QtWidgets import QTableView, QMessageBox
+from PySide6 import QtCore, QtGui
+from PySide6.QtCore import QByteArray, Qt
+from PySide6.QtWidgets import QTableView, QMessageBox
 
 from .AudioPlayer import AudioPlayerDialog, getSupportAudioFormat
 from .Widgets import ProjectViewMenu
