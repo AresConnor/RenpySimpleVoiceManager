@@ -151,4 +151,4 @@ class ProjectView(QTableView):
         dialogue = self.model().data(self.model().index(row, 3), Qt.ItemDataRole.DisplayRole)
         primaryKey = self.model().getRowPrimaryKey(row)
 
-        return display, (data, dataFormat), dialogue, primaryKey
+        return display, (data.data(), dataFormat), dialogue, primaryKey
